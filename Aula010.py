@@ -1,3 +1,22 @@
+<<<<<<< HEAD
+from enum import Enum
+class Pato:
+    def quack(self):
+        print('Quack!')
+
+class Cachorro:
+    def latir(self):
+        print('AU AU AU!')
+
+class Pessoa:
+    def quack(self):
+        print('estou imitando um pato, Quack!')
+
+class status(Enum):
+    Pessoa = Pessoa()
+    Pato = Pato()
+    Cachorro = Cachorro().latir()
+=======
     #Observadores
 
 class Estacaoclimatica:
@@ -33,3 +52,4 @@ estacao.adicionar_observador(painel)
 
 estacao.definir_temperatura(25)
 estacao.definir_temperatura(30)
+>>>>>>> 2edeabfc2ac0f2a117820b0a1e5731ee33484865
