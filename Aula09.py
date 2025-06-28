@@ -122,5 +122,4 @@ estacao.adicionar_observador(celular)
 estacao.adicionar_observador(painel)
 
 estacao.definir_temperatura(25)
->>>>>>> 2edeabfc2ac0f2a117820b0a1e5731ee33484865
 estacao.definir_temperatura(30)

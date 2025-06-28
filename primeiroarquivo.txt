@@ -1,2 +1,7 @@
+<<<<<<< HEAD
 Linha1
 Linha
+=======
+Linha1
+Linha
+>>>>>>> 0d64e2ad5e354a6f524d71ffd9ec9da9a5cd5c67

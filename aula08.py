@@ -78,4 +78,4 @@ def cliente():
     print(logistica.planejar_entrega())
 
 cliente = 'terra'
-cliente =  'mar'
+tipo =  'mar'
