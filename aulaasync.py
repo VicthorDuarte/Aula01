@@ -15,12 +15,14 @@ async def main():
     )
 asyncio.run(main())'''
 
+#Utilizando async para buscar url
 
-async def buscar(url):
+
+'''async def buscar(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url, ssl=False) as resposta:
             print(f'{url}: {resposta.status}')
 async def main():
     urls = ["https://httpbin.org/delay/1", "https://httpbin.org/delay/2", "https://httpbin.org/delay/3", "https://httpbin.org/delay/4"]
     await asyncio.gather(*(buscar(url) for url in urls))
-asyncio.run(main())
+asyncio.run(main())'''
