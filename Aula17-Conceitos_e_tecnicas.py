@@ -210,7 +210,7 @@ comprimentos  = {nome: len(nome) for nome in nomes}
 print(comprimentos)
 
 pares_quadrados= {x: x**2 for x in range(10) if x % 2 == 0}
-print(pares_qu adrados)
+print(pares_quadrados)
 
 chaves = ['a', 'b', 'c']
 valores = [1, 2, 3]
