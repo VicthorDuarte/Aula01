@@ -2,14 +2,15 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional
 from datetime import datetime, timedelta
 import bcrypt
 
 # === CONFIGURAÇÕES ===
-SECRET_KEY = "minha_chave_jwt_supersecreta"
+SECRET_KEY = "123"
 ALGORITHM = "HS256"
 ACESSO_EXPIRA_MIN = 30
 
@@ -30,22 +31,22 @@ Base.metadata.create_all(bind=engine)
 
 # === MODELO Pydantic ===
 class Usuario(BaseModel):
-    nome: str
-    senha: str
+    nome: str = Field(...,title='Nome do usuario', example='Ricardo',  description='Nome definido pelo usuario.')
+    senha: str = Field(...,gt=0,title='Senha do usuario', example='Lfamilia1234', description='Senha definida pelo usuario.')
 
 class UsuarioSaida(BaseModel):
-    id: int
-    nome: str
+    id: int = Field(title='ID do usuario', example='1')
+    nome: str = Field(title='Nome do usuario', example='Matheus')
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str
+    access_token: str = Field(title='Token de acesso', example='$2b$12$XJ2/iMRtD4lQaa.KnJRZQ./esE5TenhGIU5fW.ElkcvV2GB.YNQkC')
+    token_type: str = Field(title='Tipo do token de acesso', example='Tipo do token de acesso')
 
 # === FASTAPI ===
-app = FastAPI()
+app = FastAPI(title='Documentação Api',description='Manual de uso da Api.',version='1.0.0',docs_url='/Swagger',openapi_url='/arquvoapi.json')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # === UTILS ===
@@ -58,7 +59,7 @@ def obter_sessao():
 
 def criar_token(usuario: UsuarioDB):
     expira = datetime.utcnow() + timedelta(minutes=ACESSO_EXPIRA_MIN)
-    dados = {"sub": usuario.nome, "exp": expira}
+    dados = {"sub": usuario.nome, "exp": expira,"iss":"fastapi_jwt", "aud": "usuarios"}
     return jwt.encode(dados, SECRET_KEY, algorithm=ALGORITHM)
 
 def obter_usuario_por_nome(db: Session, nome: str):
@@ -79,18 +80,18 @@ def verificar_token(token: str = Depends(oauth2_scheme), db: Session = Depends(o
 
 # === ROTAS ===
 
-@app.post("/registro", response_model=UsuarioSaida)
+@app.post("/registro", response_description='Usuario criado com sucesso!',summary='Registrar um usuario.', description='Registra um usuario novo, se ja existe algum usuario com seus dados ou seu usuario for invalido, ele apresentará um erro.', response_model=UsuarioSaida)
 def registrar(usuario: Usuario, db: Session = Depends(obter_sessao)):
     if obter_usuario_por_nome(db, usuario.nome):
-        raise HTTPException(status_code=400, detail="Usuário já existe")
+        raise HTTPException(status_code=400, detail="Usuario já existe")
     senha_hash = bcrypt.hashpw(usuario.senha.encode(), bcrypt.gensalt()).decode()
     novo = UsuarioDB(nome=usuario.nome, senha_hash=senha_hash)
     db.add(novo)
     db.commit()
     db.refresh(novo)
     return novo
-
-@app.post("/login", response_model=Token)
+    
+@app.post("/login",response_description='Usuario logado com sucesso!',summary='Logar no usuário registrado.',description='Tem a função de logar no usuario cadastrado através do usuario e senha.', response_model=Token)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(obter_sessao)): # injeto depends() na variavel form  e na variavel db
     usuario = obter_usuario_por_nome(db, form.username)
     if not usuario or not bcrypt.checkpw(form.password.encode(), usuario.senha_hash.encode()):
@@ -98,15 +99,16 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(obt
     token = criar_token(usuario)
     return {"access_token": token, "token_type": "bearer"}
 
-@app.get("/me", response_model=UsuarioSaida)
+@app.get("/me", response_description='Verificação concluida com sucesso!',summary='Verificar meu própio usuario.',response_model=UsuarioSaida)
 def ler_me(usuario: UsuarioDB = Depends(verificar_token)):
     return usuario
 
-@app.get("/usuarios", response_model=list[UsuarioSaida])
+@app.get("/usuarios", response_model=list[UsuarioSaida], description='Verificar quais os usuarios registrados no banco de dados.', summary='Listar usuarios cadastrados.', response_description='Usuarios listados com sucesso!')
 def listar(db: Session = Depends(obter_sessao), usuario: UsuarioDB = Depends(verificar_token)):
     return db.query(UsuarioDB).all()
 
-@app.put("/usuarios/{usuario_id}", response_model=UsuarioSaida)
+
+@app.put("/usuarios/{usuario_id}", response_model=UsuarioSaida,summary='Atualizar dados de um usuario.',response_description='Usuario atualizado com sucesso!',description='Atualiza dados de um usuario através de seu id cadastrado no banco de dados.')
 def atualizar(usuario_id: int, dados: Usuario, db: Session = Depends(obter_sessao), usuario_atual: UsuarioDB = Depends(verificar_token)):
     usuario = db.query(UsuarioDB).get(usuario_id)
     if not usuario:
@@ -117,7 +119,7 @@ def atualizar(usuario_id: int, dados: Usuario, db: Session = Depends(obter_sessa
     db.refresh(usuario)
     return usuario
 
-@app.delete("/usuarios/{usuario_id}")
+@app.delete("/usuarios/{usuario_id}",description='Deletar um usuario através de seu id cadastrado no banco de dados', summary='Deletar um usuario por id.', response_description='Usuario deletado com sucessso!')
 def deletar(usuario_id: int, db: Session = Depends(obter_sessao), usuario_atual: UsuarioDB = Depends(verificar_token)):
     usuario = db.query(UsuarioDB).get(usuario_id)
     if not usuario:
