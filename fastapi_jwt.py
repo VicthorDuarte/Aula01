@@ -90,8 +90,8 @@ def registrar(usuario: Usuario, db: Session = Depends(obter_sessao)):
     db.commit()
     db.refresh(novo)
     return novo
-    
-@app.post("/login",response_description='Usuario logado com sucesso!',summary='Logar no usuário registrado.',description='Tem a função de logar no usuario cadastrado através do usuario e senha.', response_model=Token)
+
+@app.post("/login", response_model=Token)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(obter_sessao)): # injeto depends() na variavel form  e na variavel db
     usuario = obter_usuario_por_nome(db, form.username)
     if not usuario or not bcrypt.checkpw(form.password.encode(), usuario.senha_hash.encode()):
