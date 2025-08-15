@@ -32,7 +32,7 @@ Base.metadata.create_all(bind=engine)
 # === MODELO Pydantic ===
 class Usuario(BaseModel):
     nome: str = Field(...,title='Nome do usuario', example='Ricardo',  description='Nome definido pelo usuario.')
-    senha: str = Field(...,gt=0,title='Senha do usuario', example='Lfamilia1234', description='Senha definida pelo usuario.')
+    senha: str = Field(...,title='Senha do usuario', example='123', description='Senha definida pelo usuario.')
 
 class UsuarioSaida(BaseModel):
     id: int = Field(title='ID do usuario', example='1')
@@ -56,18 +56,24 @@ def obter_sessao():
         yield db
     finally:
         db.close()
-
-def criar_token(usuario: UsuarioDB):
-    expira = datetime.utcnow() + timedelta(minutes=ACESSO_EXPIRA_MIN)
-    dados = {"sub": usuario.nome, "exp": expira,"iss":"fastapi_jwt", "aud": "usuarios"}
-    return jwt.encode(dados, SECRET_KEY, algorithm=ALGORITHM)
-
 def obter_usuario_por_nome(db: Session, nome: str):
     return db.query(UsuarioDB).filter(UsuarioDB.nome == nome).first()
 
+with open("Chaveprivada.pem", "r") as f:
+    PRIVATE_KEY = f.read()
+with open("certificado.pem", "r") as f:
+    CERT_PUBLIC_KEY = f.read()
+
+# Geração do token
+def criar_token(usuario: UsuarioDB):
+    expira = datetime.utcnow() + timedelta(minutes=ACESSO_EXPIRA_MIN)
+    dados = {"sub": usuario.nome, "exp": expira}
+    return jwt.encode(dados, PRIVATE_KEY, algorithm="RS256")
+
+# Validação do token
 def verificar_token(token: str = Depends(oauth2_scheme), db: Session = Depends(obter_sessao)) -> UsuarioDB:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, CERT_PUBLIC_KEY, algorithms=["RS256"])
         nome = payload.get("sub")
         if nome is None:
             raise HTTPException(status_code=401, detail="Token inválido")
@@ -78,8 +84,8 @@ def verificar_token(token: str = Depends(oauth2_scheme), db: Session = Depends(o
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
 
-# === ROTAS ===
 
+    #--- ROTAS---Authorization: Bearer <token>
 @app.post("/registro", response_description='Usuario criado com sucesso!',summary='Registrar um usuario.', description='Registra um usuario novo, se ja existe algum usuario com seus dados ou seu usuario for invalido, ele apresentará um erro.', response_model=UsuarioSaida)
 def registrar(usuario: Usuario, db: Session = Depends(obter_sessao)):
     if obter_usuario_por_nome(db, usuario.nome):
@@ -99,7 +105,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(obt
     token = criar_token(usuario)
     return {"access_token": token, "token_type": "bearer"}
 
-@app.get("/me", response_description='Verificação concluida com sucesso!',summary='Verificar meu própio usuario.',response_model=UsuarioSaida)
+@app.get("/me", response_description='Verificação concluida com sucesso!', summary='Verificar meu própio usuario.', response_model=UsuarioSaida)
 def ler_me(usuario: UsuarioDB = Depends(verificar_token)):
     return usuario
 
